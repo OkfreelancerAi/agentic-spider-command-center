@@ -4,7 +4,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useState, useRef, useEffect } from "react";
 import { isOwner, OWNER_ADDRESS, OWNER_LINKS } from "@/lib/owner";
 import { callFullAuto, callMetaIntelligence } from "@/lib/otto";
-import { createSpiderSwarm, type SpiderSwarm } from "@/lib/spider";
+import { createSpiderSwarm, runSpiderSwarm, type SpiderSwarm } from "@/lib/spider";
 import { generateGeniusStrategy, type GeniusStrategy } from "@/lib/genius";
 import { Terminal, Zap, Bot, Users, Crosshair, Brain } from "lucide-react";
 
@@ -31,6 +31,7 @@ export default function CommandCenter() {
   const [swarm, setSwarm] = useState<SpiderSwarm | null>(null);
   const [strategy, setStrategy] = useState<GeniusStrategy | null>(null);
   const [priceCap, setPriceCap] = useState(0.05);
+  const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const owner = isOwner(address);
@@ -45,7 +46,7 @@ export default function CommandCenter() {
 
   async function handleCommand(raw: string) {
     const line = raw.trim();
-    if (!line) return;
+    if (!line || busy) return;
 
     addLog({ type: "user", text: line });
     setInput("");
@@ -54,6 +55,8 @@ export default function CommandCenter() {
     const arg = rest.join(" ").trim();
 
     try {
+      setBusy(true);
+
       if (cmd === "/connect") {
         if (isConnected) {
           addLog({ type: "system", text: `Already connected: ${address}` });
@@ -87,7 +90,7 @@ export default function CommandCenter() {
         }
         addLog({ type: "system", text: `Full Auto → "${arg}" (cap $${priceCap})…` });
         const res = await callFullAuto(arg, priceCap);
-        addLog({ type: "result", text: "Full Auto result", data: res });
+        addLog({ type: "result", text: res.live ? "Full Auto (LIVE)" : "Full Auto (mock)", data: res });
         return;
       }
 
@@ -98,7 +101,7 @@ export default function CommandCenter() {
         }
         addLog({ type: "system", text: `Meta-Intelligence → "${arg}"...` });
         const res = await callMetaIntelligence(arg, priceCap);
-        addLog({ type: "result", text: "Meta recommendations", data: res });
+        addLog({ type: "result", text: res.live ? "Meta (LIVE)" : "Meta (mock)", data: res });
         return;
       }
 
@@ -111,10 +114,26 @@ export default function CommandCenter() {
         setSwarm(s);
         addLog({
           type: "system",
-          text: `Spider swarm launched for "${arg}" — ${s.tasks.length} crawler subagents`,
-          data: s,
+          text: `Spider swarm launched for "${arg}" — ${s.tasks.length} crawler subagents (parallel Full Auto)`,
         });
-        // Fire parallel meta/full-auto style calls in production
+
+        const finished = await runSpiderSwarm(
+          s,
+          async (ask) => {
+            const r = await callFullAuto(ask, priceCap);
+            return r.data ?? r;
+          },
+          (partial) => setSwarm({ ...partial })
+        );
+
+        setSwarm(finished);
+        const done = finished.tasks.filter((t) => t.status === "done").length;
+        const err = finished.tasks.filter((t) => t.status === "error").length;
+        addLog({
+          type: "result",
+          text: `Spider complete: ${done} ok, ${err} failed`,
+          data: finished,
+        });
         return;
       }
 
@@ -123,21 +142,35 @@ export default function CommandCenter() {
           addLog({ type: "error", text: "Usage: /genius <goal>" });
           return;
         }
-        const g = generateGeniusStrategy(arg);
+        // Fuse with latest spider if available
+        const g = generateGeniusStrategy(arg, undefined, swarm);
         setStrategy(g);
-        addLog({ type: "result", text: "Genius Strategy generated", data: g });
+        addLog({
+          type: "result",
+          text: swarm
+            ? `Genius Strategy (fused with spider ${swarm.id})`
+            : "Genius Strategy (no spider yet — run /spider for higher confidence)",
+          data: g,
+        });
         return;
       }
 
       if (cmd === "/optimize") {
-        addLog({
-          type: "system",
-          text: "Optimizer: reviewing latest spider + strategy context…",
-        });
-        addLog({
-          type: "result",
-          text: "Optimization pass complete (scaffold). Wire scoring + re-ranking next.",
-        });
+        addLog({ type: "system", text: "Optimizer: reviewing latest spider + strategy…" });
+        if (!swarm && !strategy) {
+          addLog({ type: "error", text: "Nothing to optimize — run /spider and /genius first" });
+          return;
+        }
+        if (strategy && swarm) {
+          const refreshed = generateGeniusStrategy(strategy.goal, "optimizer pass", swarm);
+          setStrategy(refreshed);
+          addLog({ type: "result", text: "Strategy re-ranked with spider evidence", data: refreshed });
+        } else {
+          addLog({
+            type: "result",
+            text: "Optimization scaffold complete. Provide both spider + genius for full re-rank.",
+          });
+        }
         return;
       }
 
@@ -158,7 +191,10 @@ export default function CommandCenter() {
       }
 
       if (cmd === "/receipts") {
-        addLog({ type: "system", text: "Receipts: (none stored yet — will appear after live x402 calls)" });
+        addLog({
+          type: "system",
+          text: "Receipts: appear here after live x402 calls (set X402_PRIVATE_KEY on Vercel)",
+        });
         return;
       }
 
@@ -170,18 +206,19 @@ export default function CommandCenter() {
         return;
       }
 
-      // Natural language fallback → treat as Full Auto
+      // Natural language → Full Auto
       addLog({ type: "system", text: `Interpreting as Full Auto: "${line}"` });
       const res = await callFullAuto(line, priceCap);
-      addLog({ type: "result", text: "Result", data: res });
+      addLog({ type: "result", text: res.live ? "Result (LIVE)" : "Result (mock)", data: res });
     } catch (e: any) {
       addLog({ type: "error", text: e.message || String(e) });
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
       <header className="border-b border-zinc-800 bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
@@ -197,7 +234,11 @@ export default function CommandCenter() {
           <div className="flex items-center gap-3 text-xs">
             {isConnected ? (
               <>
-                <span className={`rounded-full px-2.5 py-1 ${owner ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-800 text-muted"}`}>
+                <span
+                  className={`rounded-full px-2.5 py-1 ${
+                    owner ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-800 text-muted"
+                  }`}
+                >
                   {owner ? "OWNER" : "CONNECTED"} · {address?.slice(0, 6)}…{address?.slice(-4)}
                 </span>
                 <button
@@ -220,26 +261,19 @@ export default function CommandCenter() {
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-4 md:flex-row">
-        {/* Terminal */}
         <section className="flex flex-1 flex-col rounded-xl border border-zinc-800 bg-surface">
           <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-2 text-xs text-muted">
             <Terminal size={14} />
             <span>Command Stream</span>
-            <span className="ml-auto">cap ${priceCap}</span>
+            <span className="ml-auto">{busy ? "working…" : `cap $${priceCap}`}</span>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto p-4 font-mono text-sm">
             {logs.map((l) => (
               <div key={l.id} className="leading-relaxed">
-                {l.type === "user" && (
-                  <span className="text-accent2">› {l.text}</span>
-                )}
-                {l.type === "system" && (
-                  <span className="text-muted">{l.text}</span>
-                )}
-                {l.type === "error" && (
-                  <span className="text-red-400">! {l.text}</span>
-                )}
+                {l.type === "user" && <span className="text-accent2">› {l.text}</span>}
+                {l.type === "system" && <span className="text-muted">{l.text}</span>}
+                {l.type === "error" && <span className="text-red-400">! {l.text}</span>}
                 {l.type === "result" && (
                   <div>
                     <div className="text-emerald-400">{l.text}</div>
@@ -265,16 +299,15 @@ export default function CommandCenter() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="/full-auto crypto news for bitcoin   or   /genius scale Base yield safely"
-              className="command-input w-full rounded-lg border border-zinc-700 bg-black/30 px-4 py-3 text-sm placeholder:text-zinc-600"
+              disabled={busy}
+              placeholder="/spider bitcoin   then   /genius scale Base yield safely"
+              className="command-input w-full rounded-lg border border-zinc-700 bg-black/30 px-4 py-3 text-sm placeholder:text-zinc-600 disabled:opacity-50"
               autoFocus
             />
           </form>
         </section>
 
-        {/* Side panels */}
         <aside className="flex w-full flex-col gap-4 md:w-80">
-          {/* Genius Strategy */}
           <div className="rounded-xl border border-zinc-800 bg-surface p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
               <Brain size={16} className="text-accent" />
@@ -284,10 +317,23 @@ export default function CommandCenter() {
               <div className="space-y-2 text-xs">
                 <div className="font-medium text-accent2">{strategy.goal}</div>
                 <div className="text-muted">{strategy.thesis}</div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <span className="rounded bg-zinc-800 px-2 py-0.5">{strategy.timeHorizon}</span>
                   <span className="rounded bg-zinc-800 px-2 py-0.5">{strategy.riskLevel}</span>
+                  <span className="rounded bg-zinc-800 px-2 py-0.5">
+                    conf {(strategy.confidence * 100).toFixed(0)}%
+                  </span>
                 </div>
+                {strategy.evidence && (
+                  <div className="rounded bg-black/30 p-2">
+                    <div className="text-muted">Evidence · {strategy.evidence.sourcesUsed} sources</div>
+                    {strategy.evidence.warnings.map((w, i) => (
+                      <div key={i} className="text-amber-400">
+                        ⚠ {w}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="pt-1">
                   <div className="mb-1 text-muted">Next actions</div>
                   <ul className="list-inside list-disc space-y-0.5">
@@ -298,11 +344,13 @@ export default function CommandCenter() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-muted">Run <code className="text-accent2">/genius &lt;goal&gt;</code> to generate a strategy blueprint.</p>
+              <p className="text-xs text-muted">
+                Run <code className="text-accent2">/genius &lt;goal&gt;</code> (better after{" "}
+                <code className="text-accent2">/spider</code>).
+              </p>
             )}
           </div>
 
-          {/* Spider */}
           <div className="rounded-xl border border-zinc-800 bg-surface p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
               <Crosshair size={16} className="text-accent2" />
@@ -312,32 +360,47 @@ export default function CommandCenter() {
               <div className="space-y-2 text-xs">
                 <div className="text-muted">Topic: {swarm.topic}</div>
                 {swarm.tasks.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between rounded bg-black/30 px-2 py-1.5">
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between rounded bg-black/30 px-2 py-1.5"
+                  >
                     <span className="truncate">{t.id}</span>
-                    <span className="text-muted">{t.status}</span>
+                    <span
+                      className={
+                        t.status === "done"
+                          ? "text-emerald-400"
+                          : t.status === "error"
+                            ? "text-red-400"
+                            : "text-muted"
+                      }
+                    >
+                      {t.status}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted">Run <code className="text-accent2">/spider &lt;topic&gt;</code> to launch crawler subagents.</p>
+              <p className="text-xs text-muted">
+                Run <code className="text-accent2">/spider &lt;topic&gt;</code> to launch crawlers.
+              </p>
             )}
           </div>
 
-          {/* Collab */}
           <div className="rounded-xl border border-zinc-800 bg-surface p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
               <Users size={16} className="text-emerald-400" />
               Collaboration
             </div>
             <p className="text-xs text-muted">
-              <code className="text-accent2">/collab create</code> · <code className="text-accent2">/collab join &lt;id&gt;</code>
+              <code className="text-accent2">/collab create</code> ·{" "}
+              <code className="text-accent2">/collab join &lt;id&gt;</code>
             </p>
           </div>
 
-          {/* Owner badge */}
           <div className="rounded-xl border border-dashed border-zinc-700 p-4 text-center text-xs text-muted">
             <Bot size={18} className="mx-auto mb-2 opacity-60" />
-            Owner locked<br />
+            Owner locked
+            <br />
             <span className="font-mono text-[10px]">{OWNER_ADDRESS}</span>
           </div>
         </aside>

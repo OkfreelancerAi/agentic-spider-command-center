@@ -1,6 +1,6 @@
 /**
  * Spider-like crawler subagent system.
- * Launches parallel intel gathering tasks across Otto endpoints / topics.
+ * Launches parallel intel gathering tasks and can feed Genius Strategy.
  */
 
 export type SpiderTask = {
@@ -37,4 +37,48 @@ export function createSpiderSwarm(topic: string): SpiderSwarm {
       status: "pending" as const,
     })),
   };
+}
+
+/** Run all spider tasks via Full Auto (or Meta) in parallel. */
+export async function runSpiderSwarm(
+  swarm: SpiderSwarm,
+  runner: (ask: string) => Promise<any>,
+  onUpdate?: (swarm: SpiderSwarm) => void
+): Promise<SpiderSwarm> {
+  const updated: SpiderSwarm = {
+    ...swarm,
+    tasks: swarm.tasks.map((t) => ({ ...t, status: "running" as const })),
+  };
+  onUpdate?.(updated);
+
+  const results = await Promise.allSettled(
+    updated.tasks.map(async (task) => {
+      try {
+        const result = await runner(task.topic);
+        return { id: task.id, status: "done" as const, result };
+      } catch (e: any) {
+        return {
+          id: task.id,
+          status: "error" as const,
+          error: e?.message || String(e),
+        };
+      }
+    })
+  );
+
+  const finalTasks = updated.tasks.map((task, i) => {
+    const r = results[i];
+    if (r.status === "fulfilled") {
+      return { ...task, ...r.value };
+    }
+    return {
+      ...task,
+      status: "error" as const,
+      error: String(r.reason),
+    };
+  });
+
+  const final: SpiderSwarm = { ...updated, tasks: finalTasks };
+  onUpdate?.(final);
+  return final;
 }

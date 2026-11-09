@@ -1,6 +1,5 @@
 /**
- * Otto x402 orchestration helpers.
- * In production the private key lives only in the server environment.
+ * Client helpers for Otto x402 (proxied through /api/otto).
  */
 
 export type MetaResult = {
@@ -8,6 +7,8 @@ export type MetaResult = {
   open_bazaar_candidates: any[];
   applied_constraints?: any;
   raw: any;
+  live?: boolean;
+  paymentReceipt?: string | null;
 };
 
 export type FullAutoResult = {
@@ -15,20 +16,22 @@ export type FullAutoResult = {
   receipt?: any;
   callId?: string;
   raw: any;
+  live?: boolean;
+  paymentReceipt?: string | null;
 };
 
 export async function callMetaIntelligence(
   ask: string,
   priceCapUsd = 0.05
 ): Promise<MetaResult> {
-  // Client-side placeholder — real calls go through /api/otto
   const res = await fetch("/api/otto", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode: "meta", ask, priceCapUsd }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || res.statusText);
+  return json;
 }
 
 export async function callFullAuto(
@@ -40,6 +43,7 @@ export async function callFullAuto(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode: "full-auto", ask, priceCapUsd }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || res.statusText);
+  return json;
 }
