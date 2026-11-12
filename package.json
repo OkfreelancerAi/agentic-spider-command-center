@@ -9,8 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@x402/axios": "^0.3.0",
-    "@x402/evm": "^0.3.0",
+    "@x402/axios": "^2.30.0",
+    "@x402/evm": "^2.30.0",
     "axios": "^1.7.7",
     "next": "15.0.3",
     "react": "^18.3.1",
