@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     // Prefer live path when key exists
     try {
-      const live = await liveOttoCall(mode, ask, Number(priceCapUsd) || 0.05);
+      const live = await liveOttoCall(mode, ask, parsedCap);
       if (live) return NextResponse.json(live);
     } catch (liveErr: any) {
       // If key is present but call failed, return the error (do not mock)
