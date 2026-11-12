@@ -341,6 +341,32 @@ export default function CommandCenter() {
         </section>
 
         <aside className="flex w-full flex-col gap-4 md:w-80">
+          <div className="rounded-xl border border-cyan-300/20 bg-gradient-to-br from-cyan-300/[.08] via-violet-500/[.06] to-transparent p-4 shadow-lg shadow-cyan-950/20">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white"><Coins size={16} className="text-cyan-300" /> Micropayment rail</div>
+              <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-1 text-[9px] font-bold tracking-wider text-amber-200">LOCKED</span>
+            </div>
+            <div className="mb-3 rounded-lg border border-white/10 bg-black/25 p-3">
+              <div className="flex items-center justify-between text-[10px] uppercase tracking-[.18em] text-zinc-500"><span>Settlement network</span><span>Base · USDC</span></div>
+              <div className="mt-1 text-xs font-semibold text-zinc-200">Pre-production · no live earnings</div>
+              <p className="mt-1 text-[10px] leading-4 text-zinc-500">Live spending stays disabled until owner authentication, durable replay protection and facilitator settlement are verified.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                ["Signal lookup", "$0.01"],
+                ["Agent task", "$0.05"],
+                ["Spider mission", "$0.10"],
+                ["Intel brief", "$0.25"],
+              ].map(([label, price]) => (
+                <div key={label} className="rounded-lg border border-white/10 bg-white/[.035] px-3 py-2">
+                  <div className="text-[10px] text-zinc-500">{label}</div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-cyan-200">{price}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-[10px] text-zinc-500"><ShieldCheck size={13} className="text-emerald-400" /> Indicative pricing only · not chargeable</div>
+          </div>
+
           <div className="rounded-xl border border-zinc-800 bg-surface p-4">
             <div className="mb-3 flex items-center gap-2 text-sm font-medium">
               <Brain size={16} className="text-accent" />
