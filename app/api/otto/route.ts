@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * Server-side Otto x402 proxy.
  *
- * When X402_PRIVATE_KEY is set, uses the real @x402 client against
- * https://x402.ottoai.services (Full Auto + Meta-Intelligence).
- * Without a key, returns structured mocks so the UI stays fully testable.
+ * The live client is retained for the future authenticated integration.
+ * The public route currently fails closed when a payment key is configured;
+ * without a key it returns structured mocks for UI testing.
  */
 
 const BASE = "https://x402.ottoai.services";
@@ -91,21 +91,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "unknown mode" }, { status: 400 });
     }
 
-    // Prefer live path when key exists
-    try {
-      const live = await liveOttoCall(mode, ask, parsedCap);
-      if (live) return NextResponse.json(live);
-    } catch (liveErr: any) {
-      // If key is present but call failed, return the error (do not mock)
-      if (process.env.X402_PRIVATE_KEY) {
-        return NextResponse.json(
-          { error: liveErr.message || "live Otto error", live: false },
-          { status: 502 }
-        );
-      }
+    const parsedCap = Number(priceCapUsd);
+    if (!Number.isFinite(parsedCap) || parsedCap <= 0 || parsedCap > 0.05) {
+      return NextResponse.json({ error: "priceCapUsd must be greater than 0 and no more than 0.05 USD" }, { status: 400 });
+    }
+    if (ask.length > 2000) {
+      return NextResponse.json({ error: "ask must be 2000 characters or fewer" }, { status: 400 });
     }
 
-    // Mock path (no key configured)
+    // Fail closed: this public endpoint has no durable owner-auth or replay store.
+    // Never let an unauthenticated request spend the server-side agent wallet.
+    if (process.env.X402_PRIVATE_KEY) {
+      return NextResponse.json(
+        {
+          error: "Live micropayments are locked until owner authentication, durable replay protection and settlement reconciliation are implemented.",
+          code: "LIVE_PAYMENT_SAFETY_GATE",
+          live: false,
+        },
+        { status: 503 }
+      );
+    }
+
+    // Explicit mock path only (no server-side payment key configured)
     if (mode === "meta") {
       return NextResponse.json({
         otto_verified: [
@@ -125,8 +132,8 @@ export async function POST(req: NextRequest) {
           },
         ],
         open_bazaar_candidates: [],
-        applied_constraints: { price_cap_usd: priceCapUsd, ask },
-        raw: { mock: true, note: "Set X402_PRIVATE_KEY for live Otto payments" },
+        applied_constraints: { price_cap_usd: parsedCap, ask },
+        raw: { mock: true, note: "Mock only. Live payments are fail-closed pending owner authentication and a durable settlement ledger." },
         live: false,
       });
     }
@@ -134,7 +141,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       data: {
         summary: `Full Auto (mock) for: "${ask}"`,
-        note: "Set X402_PRIVATE_KEY in Vercel env for real on-chain x402 settlement",
+        note: "Mock only. No payment was attempted and no earnings were created.",
         timestamp: new Date().toISOString(),
       },
       callId: `mock-${Date.now()}`,
