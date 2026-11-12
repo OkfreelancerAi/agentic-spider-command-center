@@ -6,7 +6,8 @@ import { isOwner, OWNER_ADDRESS, OWNER_LINKS } from "@/lib/owner";
 import { callFullAuto, callMetaIntelligence } from "@/lib/otto";
 import { createSpiderSwarm, runSpiderSwarm, type SpiderSwarm } from "@/lib/spider";
 import { generateGeniusStrategy, type GeniusStrategy } from "@/lib/genius";
-import { Terminal, Zap, Bot, Users, Crosshair, Brain } from "lucide-react";
+import { Terminal, Zap, Bot, Users, Crosshair, Brain, ShieldCheck, Coins, Activity } from "lucide-react";
+import SignalConstellation from "./components/signal-constellation";
 
 type LogEntry = {
   id: string;
@@ -259,6 +260,38 @@ export default function CommandCenter() {
           </div>
         </div>
       </header>
+
+      <section className="relative isolate overflow-hidden border-b border-violet-400/10 bg-[#080a13]">
+        <div className="pointer-events-none absolute inset-0 signal-grid opacity-50" />
+        <div className="mx-auto grid max-w-6xl items-center gap-5 px-4 py-8 md:grid-cols-[1.1fr_.9fr] md:py-10">
+          <div className="relative z-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.22em] text-cyan-200">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300" />
+              MIKA × SPIDER · Agent intelligence network
+            </div>
+            <h2 className="max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-white md:text-5xl">
+              Intelligence that <span className="genius-gradient">moves at machine speed.</span>
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
+              MIKA turns missions into useful work. SPIDER scouts signals, checks sources and feeds the strategy engine.
+              Every paid action stays behind explicit limits and verifiable settlement gates.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px]">
+              <span className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 text-zinc-300">01 · Discover</span>
+              <span className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 text-zinc-300">02 · Verify</span>
+              <span className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 text-zinc-300">03 · Execute within cap</span>
+              <span className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2 text-zinc-300">04 · Reconcile</span>
+            </div>
+          </div>
+          <div className="relative mx-auto w-full max-w-[470px]">
+            <SignalConstellation />
+            <div className="absolute bottom-3 left-3 rounded-xl border border-cyan-300/20 bg-[#090d18]/90 px-3 py-2 shadow-2xl shadow-cyan-500/10 backdrop-blur">
+              <div className="text-[9px] uppercase tracking-[.2em] text-zinc-500">Network mode</div>
+              <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-cyan-200"><Activity size={13} /> Bounded agent swarm</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-4 md:flex-row">
         <section className="flex flex-1 flex-col rounded-xl border border-zinc-800 bg-surface">
