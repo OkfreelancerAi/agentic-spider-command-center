@@ -77,9 +77,9 @@ export default function CommandCenter() {
 
       if (cmd === "/cap" && arg) {
         const v = parseFloat(arg);
-        if (!isNaN(v) && v > 0) {
+        if (!isNaN(v) && v > 0 && v <= 0.05) {
           setPriceCap(v);
-          addLog({ type: "system", text: `Session price cap set to $${v}` });
+          addLog({ type: "system", text: `Session total price cap set to ${v}` });
         }
         return;
       }
@@ -121,8 +121,9 @@ export default function CommandCenter() {
         const finished = await runSpiderSwarm(
           s,
           async (ask) => {
-            const r = await callFullAuto(ask, priceCap);
-            return r.data ?? r;
+            const perTaskCap = priceCap / Math.max(1, s.tasks.length);
+            // The swarm-wide cap is divided across parallel calls; preserve live/mock metadata.
+            return await callFullAuto(ask, perTaskCap);
           },
           (partial) => setSwarm({ ...partial })
         );

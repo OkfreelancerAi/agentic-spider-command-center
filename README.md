@@ -67,6 +67,7 @@ The focused RFC and implementation profile are maintained in:
 - [Paid research service example](examples/2026-11-18/paid-research-service.md)
 - [Revenue model](docs/revenue-model.md)
 - [Production release gates](docs/release-gates.md)
+- [Agentic earning readiness checklist](docs/agentic-earning-readiness.md)
 - [Changelog](changelog/2026-11-18.md)
 
 These documents define a proposed commercial flow. They do not activate live checkout, payouts, or production revenue. Mock and testnet activity must remain excluded from commercial revenue reporting.
