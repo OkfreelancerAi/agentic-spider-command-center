@@ -17,6 +17,12 @@
 - **Genius Strategy** module — AI-generated strategy blueprints with on-chain validation hooks
 - Ready for real x402 payments and future transaction monitoring
 
+## Micropayment safety status
+
+The UI includes an indicative Base USDC service menu. It is **not currently chargeable**. The live Otto payment route fails closed whenever a server-side agent key is configured because owner authentication, durable replay protection, and settlement reconciliation are not yet implemented. Without a key, the route returns clearly marked mock output only. Mock output is not revenue.
+
+The current Vercel deployment previously failed dependency installation because the repository requested unavailable `@x402/axios@^0.3.0`. The SDK dependencies are aligned to the published x402 v2 package line; this does not itself prove facilitator support or a successful payment.
+
 ## Quick Start
 
 ```bash
