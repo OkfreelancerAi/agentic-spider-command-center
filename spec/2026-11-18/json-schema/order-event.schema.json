@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-spider-command-center.example/spec/2026-11-18/json-schema/order-event.schema.json",
+  "title": "MIKA Commerce Order Event",
+  "description": "Append-only order lifecycle event. Events are records, not authority to move funds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "order_id", "event_type", "occurred_at", "actor_id", "environment"],
+  "properties": {
+    "event_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "order_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "offer_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "event_type": {
+      "enum": ["offer_created", "buyer_authorized", "payment_submitted", "payment_verified", "payment_settled", "work_started", "deliverable_submitted", "buyer_accepted", "disputed", "refunded", "payment_failed", "order_expired"]
+    },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "actor_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "environment": { "enum": ["local", "testnet", "mainnet"] },
+    "settlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["network", "transaction_hash", "token_address", "recipient", "amount", "receipt_verified"],
+      "properties": {
+        "network": { "type": "string" },
+        "transaction_hash": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$" },
+        "token_address": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+        "recipient": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+        "amount": { "type": "string", "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$" },
+        "receipt_verified": { "const": true },
+        "block_number": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "evidence_uri": { "type": "string", "format": "uri" },
+    "reason": { "type": "string", "maxLength": 1000 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "event_type": { "const": "payment_settled" } }, "required": ["event_type"] },
+      "then": { "required": ["settlement"] }
+    }
+  ]
+}
