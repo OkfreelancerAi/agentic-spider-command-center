@@ -36,3 +36,19 @@ Persist offers, quote versions, buyer authorization, order IDs, idempotency keys
 ## Pricing
 
 Prices are experiments, not established market rates. Validate willingness to pay with real customers before scaling. No revenue forecast is implied.
+
+
+## ACP-inspired interoperability contracts
+
+This profile borrows useful commerce patterns from the Agentic Commerce Protocol (ACP) repository while remaining a project-specific experimental contract. It is **not** a declaration of formal ACP conformance.
+
+- [Agent capability manifest schema](json-schema/agent-capability-manifest.schema.json) — attributable agent identity, task types, payment support, permissions and evidence requirements.
+- [Checkout offer schema](json-schema/checkout-offer.schema.json) — immutable buyer-reviewable scope, price, seller, Base USDC payment destination, expiry and terms.
+- [Order event schema](json-schema/order-event.schema.json) — append-only order lifecycle; a `payment_settled` event requires a verified settlement receipt.
+- [Illustrative manifest and offer](../../examples/2026-11-18/agent-commerce-manifest-and-offer.json) — deliberately non-operational placeholders only.
+
+### Interoperability boundary
+
+Map these project objects to the current ACP checkout and order models through an explicit adapter. Do not claim that these JSON Schemas are ACP's official schemas or that they are wire-compatible. Pin the ACP release used by an adapter and validate against that release's OpenAPI/JSON Schema before enabling a live integration.
+
+The schemas describe data only. They do not implement checkout endpoints, buyer authentication, delegated payment credentials, x402 verification/settlement, durable replay storage, refunds, or payouts. Those remain release gates. Never put a private key or reusable payment credential in an agent manifest or offer.
