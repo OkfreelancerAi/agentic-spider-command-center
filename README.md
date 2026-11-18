@@ -52,3 +52,21 @@ Push to `main` → connect the repo on Vercel → set environment variables → 
 | `/cap <usd>` | Set session spend ceiling |
 
 Built for real on-chain validated movements and agentic collaboration.
+
+
+## Revenue-first agent commerce design
+
+The focused RFC and implementation profile are maintained in:
+
+- [Agentic checkout RFC](rfcs/rfc.agentic_checkout.md)
+- [Capability negotiation RFC](rfcs/rfc.capability_negotiation.md)
+- [Payment handlers RFC](rfcs/rfc.payment_handlers.md)
+- [Seller-backed payment handler RFC](rfcs/rfc.seller_backed_payment_handler.md)
+- [Commerce extensions and discounts RFC](rfcs/rfc.extensions.md)
+- [Revenue commerce profile](spec/2026-11-18/README.md)
+- [Paid research service example](examples/2026-11-18/paid-research-service.md)
+- [Revenue model](docs/revenue-model.md)
+- [Production release gates](docs/release-gates.md)
+- [Changelog](changelog/2026-11-18.md)
+
+These documents define a proposed commercial flow. They do not activate live checkout, payouts, or production revenue. Mock and testnet activity must remain excluded from commercial revenue reporting.
